@@ -13,6 +13,7 @@ interface GlobeProps {
 export interface GlobeHandle {
   zoomIn: () => void
   zoomOut: () => void
+  resetView: () => void
 }
 
 export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, onCountryClick, className }, ref) => {
@@ -24,6 +25,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
   const currentScaleRef = useRef<number>(0)
 
   const labelsUpdateRef = useRef<(() => void) | null>(null)
+  const rotationRef = useRef<[number, number]>([0, 0])
 
   useImperativeHandle(ref, () => ({
     zoomIn: () => {
@@ -45,6 +47,27 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
           .transition()
           .duration(300)
           .call(zoomBehaviorRef.current.scaleBy, 0.7)
+          .on('end', () => {
+            if (labelsUpdateRef.current) {
+              labelsUpdateRef.current()
+            }
+          })
+      }
+    },
+    resetView: () => {
+      if (svgRef.current && projectionRef.current && zoomBehaviorRef.current) {
+        const svg = d3.select(svgRef.current)
+        const projection = projectionRef.current
+        const { width, height } = dimensions
+        const radius = Math.min(width, height) / 2.2
+        
+        rotationRef.current = [0, 0]
+        projection.rotate([0, 0])
+        currentScaleRef.current = radius
+        
+        svg.transition()
+          .duration(800)
+          .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.scale(radius))
           .on('end', () => {
             if (labelsUpdateRef.current) {
               labelsUpdateRef.current()
@@ -201,7 +224,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
     labelsUpdateRef.current = updateLabels
     updateLabels()
 
-    let rotation = [0, 0]
+    let rotation: [number, number] = rotationRef.current
 
     const zoom = d3.zoom()
       .scaleExtent([radius * 0.8, radius * 2])
@@ -224,6 +247,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
         const k = 75 / projection.scale()
         rotation = [rotate[0] + event.dx * k, rotate[1] - event.dy * k]
         rotation[1] = Math.max(-90, Math.min(90, rotation[1]))
+        rotationRef.current = rotation
         projection.rotate(rotation)
         g.selectAll('path').attr('d', path as any)
         svg.select('.ocean').attr('d', path as any)
@@ -234,6 +258,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
 
     const autoRotate = d3.interval(() => {
       rotation[0] += 0.2
+      rotationRef.current = rotation
       projection.rotate(rotation)
       g.selectAll('path').attr('d', path as any)
       svg.select('.ocean').attr('d', path as any)
