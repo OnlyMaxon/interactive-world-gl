@@ -40,6 +40,13 @@ An interactive 2D globe application that allows users to explore countries aroun
 - **Progression**: User clicks toggle → Theme smoothly transitions → All UI elements adapt → Preference is saved
 - **Success criteria**: Theme transition is smooth (300ms), all elements remain readable, preference persists across sessions
 
+### Flight Path Animations
+- **Functionality**: Display animated flight paths connecting selected countries with smooth arc trajectories
+- **Purpose**: Visualize connections and relationships between geographic locations with engaging animations
+- **Trigger**: Automatically appears when 2 or more countries are selected
+- **Progression**: User selects multiple countries → Flight paths appear with arc trajectories → Animated markers travel along paths → Paths fade in/out smoothly
+- **Success criteria**: Paths follow great circle routes, animations are smooth (60fps), visual hierarchy keeps paths subtle but visible
+
 ## Edge Case Handling
 
 - **No countries selected**: Globe shows all countries in neutral state with clear call-to-action in filter panel
