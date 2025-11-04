@@ -373,7 +373,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
       if (svgRef.current && zoomBehaviorRef.current) {
         d3.select(svgRef.current)
           .transition()
-          .duration(300)
+        scaleRef.current = radius
           .call(zoomBehaviorRef.current.scaleBy, 0.7)
       }
     },
