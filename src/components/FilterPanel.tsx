@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, memo, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -12,28 +12,55 @@ interface FilterPanelProps {
   allCountries: string[]
 }
 
-export function FilterPanel({ selectedCountries, onCountriesChange, allCountries }: FilterPanelProps) {
+const CountryButton = memo(({ 
+  country, 
+  isSelected, 
+  onClick 
+}: { 
+  country: string
+  isSelected: boolean
+  onClick: () => void 
+}) => (
+  <button
+    onClick={onClick}
+    className={`
+      px-3 py-2 text-sm text-left rounded-md transition-all
+      hover:bg-accent/10
+      ${isSelected
+        ? 'bg-accent/20 text-accent-foreground font-medium'
+        : 'text-foreground'
+      }
+    `}
+  >
+    {country}
+  </button>
+))
+
+CountryButton.displayName = 'CountryButton'
+
+export const FilterPanel = memo(({ selectedCountries, onCountriesChange, allCountries }: FilterPanelProps) => {
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredCountries = useMemo(() => {
     if (!searchQuery) return allCountries
+    const query = searchQuery.toLowerCase()
     return allCountries.filter(country =>
-      country.toLowerCase().includes(searchQuery.toLowerCase())
+      country.toLowerCase().includes(query)
     )
   }, [searchQuery, allCountries])
 
-  const toggleCountry = (country: string) => {
+  const toggleCountry = useCallback((country: string) => {
     if (selectedCountries.includes(country)) {
       onCountriesChange(selectedCountries.filter(c => c !== country))
     } else {
       onCountriesChange([...selectedCountries, country])
     }
-  }
+  }, [selectedCountries, onCountriesChange])
 
-  const clearAll = () => {
+  const clearAll = useCallback(() => {
     onCountriesChange([])
     setSearchQuery('')
-  }
+  }, [onCountriesChange])
 
   return (
     <Card className="w-80 bg-card/80 backdrop-blur-xl border-border shadow-xl">
@@ -90,20 +117,12 @@ export function FilterPanel({ selectedCountries, onCountriesChange, allCountries
               </p>
             ) : (
               filteredCountries.map(country => (
-                <button
+                <CountryButton
                   key={country}
+                  country={country}
+                  isSelected={selectedCountries.includes(country)}
                   onClick={() => toggleCountry(country)}
-                  className={`
-                    px-3 py-2 text-sm text-left rounded-md transition-all
-                    hover:bg-accent/10
-                    ${selectedCountries.includes(country)
-                      ? 'bg-accent/20 text-accent-foreground font-medium'
-                      : 'text-foreground'
-                    }
-                  `}
-                >
-                  {country}
-                </button>
+                />
               ))
             )}
           </div>
@@ -111,4 +130,6 @@ export function FilterPanel({ selectedCountries, onCountriesChange, allCountries
       </div>
     </Card>
   )
-}
+})
+
+FilterPanel.displayName = 'FilterPanel'

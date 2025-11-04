@@ -1,147 +1,195 @@
-# Planning Guide
+# Globe Explorer - Product Requirements Document
+
+An interactive 3D globe visualization application that allows users to explore countries, filter locations, and view animated flight paths between selected destinations.
 
 **Experience Qualities**:
 
+1. **Fluid & Responsive** - Every interaction feels immediate and natural, with smooth 60fps animations and seamless transitions that guide the user's attention.
+2. **Exploratory & Delightful** - The globe invites curiosity with auto-rotation, elegant flight path animations, and thoughtful micro-interactions that reward engagement.
+3. **Clean & Focused** - Interface elements gracefully recede, letting the globe take center stage while providing powerful controls exactly when needed.
 
-  - The app provides interactive globe visualization with zoom, pan, country filtering, and theme switching - making it mo
+**Complexity Level**: Light Application (multiple features with optimized state management)
+- Moderate feature set with country filtering, theme switching, zoom controls, and flight path animations
+- Optimized architecture with separated concerns, custom hooks, and memoized components
+- Persistent state management using Spark KV storage
+
 ## Essential Features
+
 ### Interactive Globe Visualization
-
-- **Progression**: App loads → Globe renders with all countries visible → Us
-
-
-- **Trigger**: User c
-
-### Zoom Controls
-- **Purpose**: Allow users to see countries more clearly without overwhelming detail
-- **Progression**: User scrolls/pinches → Globe smoothly zooms → Countries 
-
-- **Progression**: App loads → Globe renders with all countries visible → User can drag to rotate → User can scroll to zoom
-- **Success criteria**: Globe renders smoothly at 60fps, all countries are visible and properly labeled, zoom transitions are smooth
+- **Functionality**: 3D orthographic projection of Earth with country boundaries, auto-rotation, and direct manipulation
+- **Purpose**: Provides an engaging, intuitive way to explore geographic data
+- **Trigger**: Automatically loads on app start
+- **Progression**: App loads → World data fetches → Globe renders with smooth fade-in → Auto-rotation begins → User can drag to manually rotate
+- **Success criteria**: Globe renders smoothly at 60fps, all countries properly labeled, transitions feel natural, no jank during rotation or zoom
 
 ### Country Filtering System
-- **Functionality**: Allow users to filter and highlight specific countries or regions from a searchable list
-- **Purpose**: Helps users quickly find and focus on countries of interest
-- **Trigger**: User clicks filter button in top-left corner
-- **Progression**: User opens filter panel → Types country name or selects from list → Globe highlights selected countries → User can clear filters to reset
-- **Success criteria**: Filter response is instant (<100ms), highlighted countries are visually distinct, clear affordance for removing filters
+- **Functionality**: Searchable country selector with multi-select capability and visual feedback
+- **Purpose**: Helps users focus on specific regions and highlight countries of interest
+- **Trigger**: Click filter button (mobile) or use sidebar panel (desktop)
+- **Progression**: User opens filter → Types to search → Selects countries → Globe highlights selected countries → Labels adjust → Flight paths appear for 2+ selections
+- **Success criteria**: Search is instant (<100ms), selections persist across sessions, visual distinction is clear, easy removal via badges
+
+### Flight Path Animations
+- **Functionality**: Animated arcs connecting selected countries along great circle routes with moving markers
+- **Purpose**: Visualizes connections and distances between locations in an engaging way
+- **Trigger**: Automatically appears when 2 or more countries are selected
+- **Progression**: User selects multiple countries → Paths calculate great circle routes → Arcs fade in with dash animation → Markers travel along paths continuously → Paths update smoothly as globe rotates
+- **Success criteria**: Paths follow geodesic curves accurately, animations are smooth (60fps), markers remain visible on front hemisphere, no performance degradation with multiple paths
 
 ### Zoom Controls
-- **Functionality**: Smooth zoom in/out on the globe with mouse wheel or touch gestures, limited to country-level detail
-- **Purpose**: Allow users to see countries more clearly without overwhelming detail
-- **Trigger**: Mouse wheel scroll or pinch gesture
-- **Progression**: User scrolls/pinches → Globe smoothly zooms → Countries become more visible → Zoom stops at maximum country-level detail
-- **Success criteria**: Zoom feels natural (200-300ms transitions), minimum zoom shows full globe, maximum zoom shows country details clearly
+- **Functionality**: Programmatic and scroll-based zoom with scale limits and smooth transitions
+- **Purpose**: Allows detailed country viewing without overwhelming interface
+- **Trigger**: Mouse wheel, pinch gesture, or zoom buttons
+- **Progression**: User scrolls/clicks → Globe smoothly scales → Labels adjust size → Zoom limits provide gentle resistance
+- **Success criteria**: Zoom transitions are smooth (300ms), scale limits prevent over-zoom, labels remain readable at all scales
 
-### Day/Night Theme Toggle
-- **Zoom limits**: Graceful resistance feedback when reaching min/max zoom levels
-- **Purpose**: Provides comfortable viewing in different lighting conditions and personal preference
-## Design Direction
-- **Progression**: User clicks toggle → Theme smoothly transitions → All UI elements adapt → Preference is saved
-- **Success criteria**: Theme transition is smooth (300ms), all elements remain readable, preference persists across sessions
+### Theme Toggle
+- **Functionality**: Seamless dark/light mode switching with system preference detection
+- **Purpose**: Comfortable viewing in any lighting condition
+- **Trigger**: Click sun/moon icon in top-right
+- **Progression**: User clicks toggle → Icon rotates → Theme transitions smoothly → All UI elements adapt → Preference persists in localStorage
+- **Success criteria**: Transition is smooth (300ms), no flash of wrong theme, preference loads on app start, all colors remain accessible
 
-Complementary color scheme
-- **Functionality**: Display animated flight paths connecting selected countries with smooth arc trajectories
-- **Secondary Colors**: 
-- **Trigger**: Automatically appears when 2 or more countries are selected
-- **Progression**: User selects multiple countries → Flight paths appear with arc trajectories → Animated markers travel along paths → Paths fade in/out smoothly
-- **Success criteria**: Paths follow great circle routes, animations are smooth (60fps), visual hierarchy keeps paths subtle but visible
+### View Reset
+- **Functionality**: Returns globe to initial rotation and zoom state
+- **Purpose**: Provides quick way to return to starting view
+- **Trigger**: Click reset button in zoom controls
+- **Progression**: User clicks reset → Globe smoothly rotates to [0,0] → Scale returns to default → Auto-rotation resumes
+- **Success criteria**: Animation is smooth (800ms), feels natural, doesn't disorient user
 
 ## Edge Case Handling
 
-- **No countries selected**: Globe shows all countries in neutral state with clear call-to-action in filter panel
-## Font Selection
-- **Small screens/mobile**: Globe remains interactive with touch gestures, filters adapt to drawer/modal on mobile
-- **Zoom limits**: Graceful resistance feedback when reaching min/max zoom levels
-- **Fast interactions**: Debounce rapid zoom/pan events to maintain smooth performance
+- **No countries selected**: Globe shows all countries in neutral color, filter panel prompts selection
+- **Single country selected**: Country highlights, no flight paths, counter shows singular form
+- **Many countries selected** (10+): Flight paths render efficiently using requestAnimationFrame, performance remains smooth
+- **Small screens/mobile**: Filter panel becomes bottom sheet drawer, touch gestures work flawlessly
+- **Slow network**: Loading skeleton displays while world data fetches, graceful error handling
+- **Rapid interactions**: Debounced updates prevent race conditions, animations queue properly
+- **Zoom limits**: Gentle resistance feedback at min/max zoom levels
+- **Globe rotation during selection**: Paths update in real-time as globe rotates
 
 ## Design Direction
 
-The design should evoke a sense of exploration and wonder, feeling both modern and timeless. It should balance the richness of geographic data with a clean, uncluttered interface. The globe itself is the hero element, with controls elegantly receding until needed. The aesthetic should feel sophisticated and professional - like a premium digital atlas or geographic intelligence tool.
+The design evokes premium geographic intelligence tools - sophisticated, modern, and professional. It balances rich data visualization with a minimalist interface where the globe is the undisputed hero element. Controls are present but unobtrusive, appearing with glassmorphic effects that suggest depth without cluttering the view. The aesthetic draws inspiration from NASA mission control interfaces and high-end mapping applications, feeling both cutting-edge and timeless.
 
 ## Color Selection
 
-Complementary color scheme (opposite colors) with oceanic blues contrasted against warm earth tones for a natural geographic feel.
+**Complementary color scheme** (oceanic blues contrasted with warm earth tones) that creates natural geographic context.
 
-- **Primary Color**: Deep Ocean Blue (oklch(0.35 0.08 240)) - Communicates exploration, depth, and geographic context as the water/ocean color
-  - Micro: Country highl
-  - Soft Earth (oklch(0.88 0.02 80)) - Represents land masses with a subtle warm tone
-  - Slate Gray (oklch(0.45 0.02 240)) - For UI elements and borders, maintains professional feel
-- **Accent Color**: Vibrant Coral (oklch(0.68 0.18 25)) - For interactive elements, CTAs, and highlighted countries - creates energy and draws attention
+- **Primary Color**: Deep Ocean Blue `oklch(0.35 0.08 240)` - Represents water bodies and provides grounding context for landmasses
+- **Secondary Colors**: 
+  - Soft Earth `oklch(0.88 0.02 80)` - Warm neutral for land masses
+  - Slate Gray `oklch(0.45 0.02 240)` - Professional tone for UI chrome
+- **Accent Color**: Vibrant Coral `oklch(0.68 0.18 25)` - Draws attention to selected countries, flight paths, and interactive elements
 - **Foreground/Background Pairings**:
-  - Background Light (oklch(0.98 0 0)): Foreground Dark Navy (oklch(0.25 0.05 240)) - Ratio 13.8:1 ✓
-  - Zoom controls remain bottom-right but slightly larger touch targets (44x44px min)
-  - Touch gestures: drag to rotate, pinch to zoom, tap to select country
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  - Zoom controls remain bottom-right but slightly larger touch targets (44x44px min)
-  - Search input becomes full-width in mobile drawer
-  - Touch gestures: drag to rotate, pinch to zoom, tap to select country
+  - Background Light `oklch(0.98 0 0)`: Foreground Dark Navy `oklch(0.25 0.05 240)` - Ratio 13.8:1 ✓
+  - Card White `oklch(1 0 0)`: Text Dark Navy `oklch(0.25 0.05 240)` - Ratio 14.2:1 ✓
+  - Primary Blue `oklch(0.35 0.08 240)`: White text `oklch(1 0 0)` - Ratio 8.1:1 ✓
+  - Accent Coral `oklch(0.68 0.18 25)`: Dark Navy text `oklch(0.25 0.05 240)` - Ratio 6.2:1 ✓
+  - Muted Gray `oklch(0.94 0.01 240)`: Muted text `oklch(0.55 0.03 240)` - Ratio 4.8:1 ✓
+
+## Font Selection
+
+**Inter** for its geometric precision and excellent legibility at all scales, with a professional, modern character that suits geographic visualization.
+
+- **Typographic Hierarchy**:
+  - H1 (App Title): Inter Bold / 24px / -0.02em letter spacing / line-height 1.2
+  - Body (UI Labels): Inter Medium / 14px / normal spacing / line-height 1.5
+  - Small (Counts, Meta): Inter Medium / 12px / normal spacing / line-height 1.4
+  - Country Labels (Dynamic): Inter Medium-SemiBold / 8-16px (scale-dependent) / tight spacing
+  - Button Text: Inter SemiBold / 14px / normal spacing
+
+## Animations
+
+Animations serve functional purposes while adding moments of delight. Motion follows physics-inspired easing for natural feel.
+
+- **Purposeful Meaning**: Auto-rotation suggests exploration, flight path animations show movement and connection, UI transitions provide spatial continuity
+- **Hierarchy of Movement**: 
+  1. Globe rotation (continuous, gentle)
+  2. Flight path markers (rhythmic, eye-catching)
+  3. Country highlights (immediate, responsive)
+  4. UI panel transitions (smooth, unobtrusive)
+  5. Theme transitions (elegant, comprehensive)
+
+**Key Animations**:
+- **Auto-rotation**: 0.2° per 50ms, infinite loop, stops on user interaction
+- **Zoom transitions**: 300ms, easeOut
+- **View reset**: 800ms, easeInOut
+- **Flight path draw**: 2000ms, easeQuadInOut
+- **Marker movement**: 3s loop per path, staggered by 300ms
+- **Panel entry**: 400ms, easeOut with stagger
+- **Theme switch**: 300ms, all elements
+- **Counter animation**: Spring physics, stiffness: 100, damping: 30
+
+## Component Selection
+
+**Architecture**: Separation of concerns with custom hooks, memoized components, and optimized D3 integration
+
+- **Custom Hooks**:
+  - `useGlobeData` - Fetches and caches world topology data
+  - `useDimensions` - ResizeObserver-based responsive sizing
+  - `useKV` - Persistent state for selected countries
+  - `useIsMobile` - Responsive layout detection
+
+- **Core Components**:
+  - `Globe` (forwardRef) - D3-powered SVG globe with imperative handle
+  - `FilterPanel` (memo) - Searchable country selector with badges
+  - `ZoomControls` (memo) - Grouped zoom buttons with reset
+  - `ThemeToggle` (memo) - Animated theme switcher
+  - `AnimatedCounter` (framer-motion) - Spring-based number animations
+  - `GlobeLoader` - Skeleton loader for data fetch
+
+- **shadcn Components Used**:
+  - `Card` - Filter panel container
+  - `Button` - All interactive controls  
+  - `Input` - Country search field
+  - `Badge` - Selected country chips
+  - `ScrollArea` - Country list scrolling
+  - `Sheet` - Mobile filter drawer
+  - `Skeleton` - Loading states
+
+- **Utility Functions**:
+  - `globe-utils.ts` - D3 helpers (interpolation, path generation, visibility)
+  - `constants.ts` - Country list data
+
+- **Component States**:
+  - Buttons: default, hover (scale 1.05), active, disabled
+  - Countries: neutral, hover (accent), selected (bright accent)
+  - Filter items: default, hover (accent/10), selected (accent/20)
+  - Flight paths: hidden, animating-in, visible, pulsing markers
+
+- **Icons**: Phosphor Icons with bold weight
+  - `GlobeHemisphereWest` (rotating) - App branding
+  - `FunnelSimple` - Filter trigger
+  - `Plus/Minus` - Zoom controls
+  - `ArrowsClockwise` - Reset view
+  - `Sun/Moon` - Theme toggle
+  - `MagnifyingGlass` - Search indicator
+  - `X` - Remove badges
+
+- **Spacing**: Tailwind spacing scale
+  - Container padding: `p-4` (16px)
+  - Component gaps: `gap-4` (16px)
+  - UI element gaps: `gap-2` to `gap-3` (8-12px)
+  - Page margins: `6` (24px) from edges
+  - Touch targets: minimum 44x44px
+
+- **Mobile Adaptations**:
+  - Filter panel → Sheet drawer from left
+  - Larger touch targets for all buttons (44x44px minimum)
+  - Stacked layout for controls in constrained space
+  - Optimized performance for touch interactions
+
+## Performance Optimizations
+
+- **React.memo** on FilterPanel, ZoomControls, ThemeToggle to prevent unnecessary re-renders
+- **useCallback** for all event handlers to stabilize references
+- **useMemo** for expensive computations (country filtering, GeoJSON conversion)
+- **ResizeObserver** instead of window resize events
+- **RequestAnimationFrame** for flight path marker animations
+- **D3 data joins** for efficient DOM updates
+- **Debounced search** in filter panel
+- **Lazy GeoJSON** conversion only when world data loads
+- **Cleanup functions** for all timers, intervals, and animation frames
+- **Vector-effect: non-scaling-stroke** for consistent SVG rendering
+- **Will-change: transform** on SVG for GPU acceleration

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, memo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sun, Moon } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
-export function ThemeToggle() {
+export const ThemeToggle = memo(() => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
   useEffect(() => {
@@ -43,4 +43,6 @@ export function ThemeToggle() {
       <span className="sr-only">Toggle theme</span>
     </Button>
   )
-}
+})
+
+ThemeToggle.displayName = 'ThemeToggle'

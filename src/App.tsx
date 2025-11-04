@@ -1,48 +1,16 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useMemo, useCallback } from 'react'
 import { Globe, type GlobeHandle } from '@/components/Globe'
 import { FilterPanel } from '@/components/FilterPanel'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { ZoomControls } from '@/components/ZoomControls'
+import { AnimatedCounter } from '@/components/AnimatedCounter'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { FunnelSimple, GlobeHemisphereWest } from '@phosphor-icons/react'
 import { useKV } from '@github/spark/hooks'
 import { useIsMobile } from '@/hooks/use-mobile'
-
-const ALL_COUNTRIES = [
-  'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 
-  'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 
-  'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 
-  'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 
-  'Burkina Faso', 'Burundi', 'Cambodia', 'Cameroon', 'Canada', 'Cape Verde', 
-  'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 
-  'Congo', 'Costa Rica', 'Croatia', 'Cuba', 'Cyprus', 'Czech Republic', 
-  'Democratic Republic of the Congo', 'Denmark', 'Djibouti', 'Dominica', 
-  'Dominican Republic', 'East Timor', 'Ecuador', 'Egypt', 'El Salvador', 
-  'Equatorial Guinea', 'Eritrea', 'Estonia', 'Ethiopia', 'Fiji', 'Finland', 
-  'France', 'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 
-  'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hungary', 
-  'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 
-  'Ivory Coast', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 
-  'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 
-  'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Macedonia', 'Madagascar', 
-  'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 
-  'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 
-  'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar', 'Namibia', 
-  'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 
-  'North Korea', 'Norway', 'Oman', 'Pakistan', 'Palau', 'Palestine', 'Panama', 
-  'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 
-  'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 
-  'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Saudi Arabia', 
-  'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 
-  'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 
-  'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Swaziland', 'Sweden', 
-  'Switzerland', 'Syria', 'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Togo', 
-  'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 
-  'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States', 
-  'United States of America', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 
-  'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
-].sort()
+import { ALL_COUNTRIES } from '@/lib/constants'
+import { motion, AnimatePresence } from 'framer-motion'
 
 function App() {
   const [selectedCountries, setSelectedCountries] = useKV<string[]>('selected-countries', [])
@@ -50,17 +18,21 @@ function App() {
   const isMobile = useIsMobile()
   const [isSheetOpen, setIsSheetOpen] = useState(false)
 
-  const countries = selectedCountries || []
+  const countries = useMemo(() => selectedCountries || [], [selectedCountries])
 
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     globeRef.current?.zoomIn()
-  }
+  }, [])
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     globeRef.current?.zoomOut()
-  }
+  }, [])
 
-  const handleCountryClick = (country: string) => {
+  const handleReset = useCallback(() => {
+    globeRef.current?.resetView()
+  }, [])
+
+  const handleCountryClick = useCallback((country: string) => {
     setSelectedCountries(current => {
       const currentList = current || []
       if (currentList.includes(country)) {
@@ -69,11 +41,11 @@ function App() {
         return [...currentList, country]
       }
     })
-  }
+  }, [setSelectedCountries])
 
-  const handleCountriesChange = (newCountries: string[]) => {
+  const handleCountriesChange = useCallback((newCountries: string[]) => {
     setSelectedCountries(newCountries)
-  }
+  }, [setSelectedCountries])
 
   const FilterPanelContent = (
     <FilterPanel
@@ -94,16 +66,30 @@ function App() {
         />
       </div>
 
-      <div className="absolute top-6 left-6 flex flex-col gap-4 z-10">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        className="absolute top-6 left-6 flex flex-col gap-4 z-10"
+      >
         <div className="flex items-center gap-3">
-          <GlobeHemisphereWest size={32} weight="fill" className="text-accent" />
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+          >
+            <GlobeHemisphereWest size={32} weight="fill" className="text-accent" />
+          </motion.div>
           <h1 className="text-2xl font-bold tracking-tight">Globe Explorer</h1>
         </div>
 
         {!isMobile && (
-          <div className="animate-fadeIn">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
             {FilterPanelContent}
-          </div>
+          </motion.div>
         )}
 
         {isMobile && (
@@ -123,27 +109,45 @@ function App() {
             </SheetContent>
           </Sheet>
         )}
-      </div>
+      </motion.div>
 
-      <div className="absolute top-6 right-6 z-10">
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        className="absolute top-6 right-6 z-10"
+      >
         <ThemeToggle />
-      </div>
+      </motion.div>
 
-      <div className="absolute bottom-6 right-6 z-10">
-        <ZoomControls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} />
-      </div>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="absolute bottom-6 right-6 z-10"
+      >
+        <ZoomControls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onReset={handleReset} />
+      </motion.div>
 
-      {countries.length > 0 && (
-        <div className="absolute bottom-6 left-6 z-10">
-          <div className="bg-card/80 backdrop-blur-xl border border-border rounded-xl px-4 py-3 shadow-lg">
-            <p className="text-sm font-medium">
-              <span className="text-muted-foreground">Selected:</span>{' '}
-              <span className="text-accent font-semibold">{countries.length}</span>{' '}
-              {countries.length === 1 ? 'country' : 'countries'}
-            </p>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {countries.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="absolute bottom-6 left-6 z-10"
+          >
+            <div className="bg-card/80 backdrop-blur-xl border border-border rounded-xl px-4 py-3 shadow-lg">
+              <p className="text-sm font-medium">
+                <span className="text-muted-foreground">Selected:</span>{' '}
+                <AnimatedCounter value={countries.length} className="text-accent font-semibold" />{' '}
+                {countries.length === 1 ? 'country' : 'countries'}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

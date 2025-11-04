@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Plus, Minus, ArrowsClockwise } from '@phosphor-icons/react'
+import { memo } from 'react'
 
 interface ZoomControlsProps {
   onZoomIn: () => void
@@ -7,7 +8,7 @@ interface ZoomControlsProps {
   onReset?: () => void
 }
 
-export function ZoomControls({ onZoomIn, onZoomOut, onReset }: ZoomControlsProps) {
+export const ZoomControls = memo(({ onZoomIn, onZoomOut, onReset }: ZoomControlsProps) => {
   return (
     <div className="flex flex-col gap-2">
       <Button
@@ -41,4 +42,6 @@ export function ZoomControls({ onZoomIn, onZoomOut, onReset }: ZoomControlsProps
       )}
     </div>
   )
-}
+})
+
+ZoomControls.displayName = 'ZoomControls'
