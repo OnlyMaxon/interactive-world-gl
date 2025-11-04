@@ -23,6 +23,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
   const projectionRef = useRef<any>(null)
   const currentScaleRef = useRef<number>(0)
 
+  const labelsUpdateRef = useRef<(() => void) | null>(null)
+
   useImperativeHandle(ref, () => ({
     zoomIn: () => {
       if (svgRef.current && zoomBehaviorRef.current) {
@@ -30,6 +32,11 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
           .transition()
           .duration(300)
           .call(zoomBehaviorRef.current.scaleBy, 1.3)
+          .on('end', () => {
+            if (labelsUpdateRef.current) {
+              labelsUpdateRef.current()
+            }
+          })
       }
     },
     zoomOut: () => {
@@ -38,6 +45,11 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
           .transition()
           .duration(300)
           .call(zoomBehaviorRef.current.scaleBy, 0.7)
+          .on('end', () => {
+            if (labelsUpdateRef.current) {
+              labelsUpdateRef.current()
+            }
+          })
       }
     }
   }))
@@ -143,6 +155,52 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
       .append('title')
       .text((d: any) => d.properties?.name || '')
 
+    const labelsGroup = svg.append('g').attr('class', 'labels')
+
+    const updateLabels = () => {
+      labelsGroup.selectAll('text').remove()
+
+      labelsGroup.selectAll('text')
+        .data(countriesGeoJSON.features)
+        .enter()
+        .append('text')
+        .attr('class', 'country-label')
+        .each(function(d: any) {
+          const centroid = path.centroid(d)
+          const coordinates = d3.geoCentroid(d)
+          const distance = d3.geoDistance(coordinates, projection.invert!([width / 2, height / 2]))
+          
+          if (distance > 1.57) {
+            d3.select(this).attr('opacity', 0)
+            return
+          }
+
+          const countryName = d.properties?.name || ''
+          const scale = currentScaleRef.current / radius
+          let fontSize = Math.max(8, Math.min(12, 10 * scale))
+          
+          if (selectedCountries.includes(countryName)) {
+            fontSize = Math.max(10, Math.min(16, 14 * scale))
+          }
+
+          d3.select(this)
+            .attr('x', centroid[0])
+            .attr('y', centroid[1])
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'middle')
+            .attr('font-size', `${fontSize}px`)
+            .attr('font-weight', selectedCountries.includes(countryName) ? '600' : '500')
+            .attr('fill', selectedCountries.includes(countryName) ? 'var(--color-accent-foreground)' : 'var(--color-foreground)')
+            .attr('opacity', selectedCountries.length === 0 ? 0.7 : (selectedCountries.includes(countryName) ? 1 : 0.4))
+            .attr('pointer-events', 'none')
+            .style('text-shadow', '0 0 3px var(--color-background), 0 0 3px var(--color-background), 0 0 3px var(--color-background)')
+            .text(countryName)
+        })
+    }
+
+    labelsUpdateRef.current = updateLabels
+    updateLabels()
+
     let rotation = [0, 0]
 
     const zoom = d3.zoom()
@@ -153,6 +211,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
           projection.scale(event.transform.k)
           g.selectAll('path').attr('d', path as any)
           svg.select('.ocean').attr('d', path as any)
+          updateLabels()
         }
       })
 
@@ -168,6 +227,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
         projection.rotate(rotation)
         g.selectAll('path').attr('d', path as any)
         svg.select('.ocean').attr('d', path as any)
+        updateLabels()
       })
 
     svg.call(drag as any)
@@ -177,6 +237,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
       projection.rotate(rotation)
       g.selectAll('path').attr('d', path as any)
       svg.select('.ocean').attr('d', path as any)
+      updateLabels()
     }, 50)
 
     let isAutoRotating = true
