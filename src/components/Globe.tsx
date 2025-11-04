@@ -120,34 +120,32 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
     const pathGenerator = d3.geoPath().projection(projection)
     const center: [number, number] = [dimensions.width / 2, dimensions.height / 2]
 
+    const arcPointsMap = flightPaths.map((d: any) => createGeoInterpolator(d.from, d.to))
+
     flightPathsGroup.selectAll('path')
       .data(flightPaths, (d: any) => `${d.fromName}-${d.toName}`)
       .join(
-        enter => {
-          const arcPoints = enter.map((d: any) => createGeoInterpolator(d.from, d.to))
-          
-          return enter.append('path')
-            .datum((d, i) => ({ type: 'LineString', coordinates: arcPoints[i] } as any))
-            .attr('d', pathGenerator as any)
-            .attr('fill', 'none')
-            .attr('stroke', 'var(--color-accent)')
-            .attr('stroke-width', 2)
-            .attr('stroke-opacity', 0.4)
-            .style('pointer-events', 'none')
-            .each(function() {
-              const totalLength = (this as SVGPathElement).getTotalLength()
-              d3.select(this)
-                .attr('stroke-dasharray', totalLength + ' ' + totalLength)
-                .attr('stroke-dashoffset', totalLength)
-                .transition()
-                .duration(2000)
-                .ease(d3.easeQuadInOut)
-                .attr('stroke-dashoffset', 0)
-                .on('end', function() {
-                  d3.select(this).attr('stroke-dasharray', '5,5')
-                })
-            })
-        },
+        enter => enter.append('path')
+          .datum((d, i) => ({ type: 'LineString', coordinates: arcPointsMap[i] } as any))
+          .attr('d', pathGenerator as any)
+          .attr('fill', 'none')
+          .attr('stroke', 'var(--color-accent)')
+          .attr('stroke-width', 2)
+          .attr('stroke-opacity', 0.4)
+          .style('pointer-events', 'none')
+          .each(function() {
+            const totalLength = (this as SVGPathElement).getTotalLength()
+            d3.select(this)
+              .attr('stroke-dasharray', totalLength + ' ' + totalLength)
+              .attr('stroke-dashoffset', totalLength)
+              .transition()
+              .duration(2000)
+              .ease(d3.easeQuadInOut)
+              .attr('stroke-dashoffset', 0)
+              .on('end', function() {
+                d3.select(this).attr('stroke-dasharray', '5,5')
+              })
+          }),
         update => update.attr('d', pathGenerator as any),
         exit => exit.transition().duration(300).attr('opacity', 0).remove()
       )
