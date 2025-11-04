@@ -64,9 +64,9 @@ An interactive 3D globe visualization application that allows users to explore c
 - **Many countries selected** (10+): Flight paths render efficiently using requestAnimationFrame, performance remains smooth
 - **Small screens/mobile**: Filter panel becomes bottom sheet drawer, touch gestures work flawlessly
 - **Slow network**: Loading skeleton displays while world data fetches, graceful error handling
-- **Rapid interactions**: Debounced updates prevent race conditions, animations queue properly
-- **Zoom limits**: Gentle resistance feedback at min/max zoom levels
-- **Globe rotation during selection**: Paths update in real-time as globe rotates
+- **Rapid interactions**: Throttled dimension updates (100ms), debounced search (150ms), stable event handlers prevent race conditions, animations queue properly
+- **Zoom limits**: Gentle resistance feedback at min/max zoom levels (0.8x-2.5x radius)
+- **Globe rotation during selection**: Paths update in real-time as globe rotates (60fps target)
 
 ## Design Direction
 
@@ -112,9 +112,9 @@ Animations serve functional purposes while adding moments of delight. Motion fol
   5. Theme transitions (elegant, comprehensive)
 
 **Key Animations**:
-- **Auto-rotation**: 0.2° per 50ms, infinite loop, stops on user interaction
-- **Zoom transitions**: 300ms, easeOut
-- **View reset**: 800ms, easeInOut
+- **Auto-rotation**: 0.3° per 40ms (optimized for 60fps), infinite loop, stops on user interaction
+- **Zoom transitions**: Immediate feedback with direct scale manipulation
+- **View reset**: 800ms, smooth D3 tween interpolation
 - **Flight path draw**: 2000ms, easeQuadInOut
 - **Marker movement**: 3s loop per path, staggered by 300ms
 - **Panel entry**: 400ms, easeOut with stagger
@@ -182,14 +182,22 @@ Animations serve functional purposes while adding moments of delight. Motion fol
 
 ## Performance Optimizations
 
-- **React.memo** on FilterPanel, ZoomControls, ThemeToggle to prevent unnecessary re-renders
+- **React.memo** on FilterPanel, ZoomControls, ThemeToggle, CountryButton to prevent unnecessary re-renders
 - **useCallback** for all event handlers to stabilize references
-- **useMemo** for expensive computations (country filtering, GeoJSON conversion)
-- **ResizeObserver** instead of window resize events
-- **RequestAnimationFrame** for flight path marker animations
+- **useMemo** for expensive computations (country filtering, GeoJSON conversion, radius calculations)
+- **Debounced search** (150ms) in filter panel for smooth typing experience
+- **Throttled ResizeObserver** (100ms) to limit dimension update frequency
+- **Cached world data** in module scope to prevent redundant network requests
+- **Single Promise pattern** for world data fetch to prevent duplicate requests
+- **RequestAnimationFrame** for flight path marker animations (60fps target)
 - **D3 data joins** for efficient DOM updates
-- **Debounced search** in filter panel
 - **Lazy GeoJSON** conversion only when world data loads
-- **Cleanup functions** for all timers, intervals, and animation frames
+- **Cleanup functions** for all timers, intervals, animation frames, and observers
 - **Vector-effect: non-scaling-stroke** for consistent SVG rendering
 - **Will-change: transform** on SVG for GPU acceleration
+- **Transform: translateZ(0)** for hardware acceleration
+- **Touch-action: none** to prevent default touch behaviors
+- **User-select: none** to prevent text selection during drag
+- **Disabled double-click zoom** to prevent accidental zoom-ins
+- **Optimized zoom controls** that directly manipulate projection instead of D3 zoom behavior
+- **Smooth reset animation** using D3 tweening for natural rotation transitions

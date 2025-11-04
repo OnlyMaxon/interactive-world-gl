@@ -40,7 +40,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
   }, [worldData])
 
   const radius = useMemo(() => {
-    return Math.min(dimensions.width, dimensions.height) / 2.5
+    return Math.min(dimensions.width, dimensions.height) / 2.8
   }, [dimensions])
 
   const updateGlobe = useCallback((
@@ -278,8 +278,9 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
       })
       .on('zoom', (event) => {
         if (event.sourceEvent?.type === 'wheel') {
-          scaleRef.current = event.transform.k
-          projection.scale(event.transform.k)
+          const newScale = Math.max(radius * 0.8, Math.min(radius * 2.5, event.transform.k))
+          scaleRef.current = newScale
+          projection.scale(newScale)
           updateGlobe(svg, projection, path)
           updateLabels(svg, projection, path, countriesGeoJSON.features)
           updateFlightPaths(svg, projection, countriesGeoJSON.features)
@@ -290,7 +291,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
       })
 
     zoomBehaviorRef.current = zoom
-    svg.call(zoom).on('wheel.zoom', zoom.wheel)
+    svg.call(zoom).on('wheel.zoom', zoom.wheel).on('dblclick.zoom', null)
 
     const drag = d3.drag<SVGSVGElement, unknown>()
       .on('start', () => {
@@ -317,15 +318,15 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
     svg.call(drag)
 
     autoRotateTimerRef.current = d3.interval(() => {
-      if (!isDraggingRef.current && !isZoomingRef.current) {
+      if (!isDraggingRef.current && !isZoomingRef.current && projectionRef.current) {
         const currentRotation = rotationRef.current
-        rotationRef.current = [currentRotation[0] + 0.2, currentRotation[1], currentRotation[2]]
+        rotationRef.current = [currentRotation[0] + 0.3, currentRotation[1], currentRotation[2]]
         projection.rotate(rotationRef.current)
         updateGlobe(svg, projection, path)
         updateLabels(svg, projection, path, countriesGeoJSON.features)
         updateFlightPaths(svg, projection, countriesGeoJSON.features)
       }
-    }, 50)
+    }, 40)
 
     return () => {
       if (autoRotateTimerRef.current) {
@@ -362,31 +363,72 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
 
   useImperativeHandle(ref, () => ({
     zoomIn: () => {
-      if (svgRef.current && zoomBehaviorRef.current) {
-        d3.select(svgRef.current)
-          .transition()
-          .duration(300)
-          .call(zoomBehaviorRef.current.scaleBy, 1.3)
+      if (svgRef.current && zoomBehaviorRef.current && projectionRef.current) {
+        const newScale = scaleRef.current * 1.3
+        const maxScale = radius * 2.5
+        const targetScale = Math.min(newScale, maxScale)
+        
+        scaleRef.current = targetScale
+        projectionRef.current.scale(targetScale)
+        
+        const svg = d3.select(svgRef.current)
+        const path = d3.geoPath().projection(projectionRef.current)
+        
+        if (countriesGeoJSON) {
+          updateGlobe(svg, projectionRef.current, path)
+          updateLabels(svg, projectionRef.current, path, countriesGeoJSON.features)
+          updateFlightPaths(svg, projectionRef.current, countriesGeoJSON.features)
+        }
       }
     },
     zoomOut: () => {
-      if (svgRef.current && zoomBehaviorRef.current) {
-        d3.select(svgRef.current)
-          .transition()
-        scaleRef.current = radius
-          .call(zoomBehaviorRef.current.scaleBy, 0.7)
+      if (svgRef.current && zoomBehaviorRef.current && projectionRef.current) {
+        const newScale = scaleRef.current * 0.7
+        const minScale = radius * 0.8
+        const targetScale = Math.max(newScale, minScale)
+        
+        scaleRef.current = targetScale
+        projectionRef.current.scale(targetScale)
+        
+        const svg = d3.select(svgRef.current)
+        const path = d3.geoPath().projection(projectionRef.current)
+        
+        if (countriesGeoJSON) {
+          updateGlobe(svg, projectionRef.current, path)
+          updateLabels(svg, projectionRef.current, path, countriesGeoJSON.features)
+          updateFlightPaths(svg, projectionRef.current, countriesGeoJSON.features)
+        }
       }
     },
     resetView: () => {
       if (svgRef.current && projectionRef.current && zoomBehaviorRef.current) {
         rotationRef.current = [0, 0, 0]
-        projectionRef.current.rotate([0, 0, 0])
         scaleRef.current = radius
         
-        d3.select(svgRef.current)
-          .transition()
-          .duration(800)
-          .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.scale(radius))
+        projectionRef.current.rotate([0, 0, 0])
+        projectionRef.current.scale(radius)
+        
+        const svg = d3.select(svgRef.current)
+        const path = d3.geoPath().projection(projectionRef.current)
+        
+        if (countriesGeoJSON) {
+          svg.transition()
+            .duration(800)
+            .tween('rotate', () => {
+              const r = d3.interpolate(rotationRef.current, [0, 0, 0] as [number, number, number])
+              const s = d3.interpolate(scaleRef.current, radius)
+              return (t: number) => {
+                const rotation = r(t)
+                const scale = s(t)
+                rotationRef.current = rotation
+                scaleRef.current = scale
+                projectionRef.current!.rotate(rotation).scale(scale)
+                updateGlobe(svg, projectionRef.current!, path)
+                updateLabels(svg, projectionRef.current!, path, countriesGeoJSON.features)
+                updateFlightPaths(svg, projectionRef.current!, countriesGeoJSON.features)
+              }
+            })
+        }
       }
     }
   }))
@@ -401,7 +443,11 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
       className={className}
       width={dimensions.width}
       height={dimensions.height}
-      style={{ cursor: isDraggingRef.current ? 'grabbing' : 'grab' }}
+      style={{ 
+        cursor: isDraggingRef.current ? 'grabbing' : 'grab',
+        touchAction: 'none',
+        userSelect: 'none'
+      }}
     />
   )
 })

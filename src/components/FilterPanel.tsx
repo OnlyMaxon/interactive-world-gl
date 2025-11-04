@@ -1,10 +1,11 @@
-import { useState, useMemo, memo, useCallback } from 'react'
+import { useState, useMemo, memo, useCallback, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { MagnifyingGlass, X } from '@phosphor-icons/react'
+import { debounce } from '@/lib/performance'
 
 interface FilterPanelProps {
   selectedCountries: string[]
@@ -40,14 +41,24 @@ CountryButton.displayName = 'CountryButton'
 
 export const FilterPanel = memo(({ selectedCountries, onCountriesChange, allCountries }: FilterPanelProps) => {
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+
+  const debouncedSetQuery = useMemo(
+    () => debounce((value: string) => setDebouncedQuery(value), 150),
+    []
+  )
+
+  useEffect(() => {
+    debouncedSetQuery(searchQuery)
+  }, [searchQuery, debouncedSetQuery])
 
   const filteredCountries = useMemo(() => {
-    if (!searchQuery) return allCountries
-    const query = searchQuery.toLowerCase()
+    if (!debouncedQuery) return allCountries
+    const query = debouncedQuery.toLowerCase()
     return allCountries.filter(country =>
       country.toLowerCase().includes(query)
     )
-  }, [searchQuery, allCountries])
+  }, [debouncedQuery, allCountries])
 
   const toggleCountry = useCallback((country: string) => {
     if (selectedCountries.includes(country)) {
