@@ -57,7 +57,7 @@ function App() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-background transition-colors duration-300">
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="absolute inset-0 z-0">
         <Globe
           ref={globeRef}
           selectedCountries={countries}

@@ -27,10 +27,11 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
   const projectionRef = useRef<d3.GeoProjection | null>(null)
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
   const scaleRef = useRef<number>(0)
-  const rotationRef = useRef<[number, number]>([0, 0])
+  const rotationRef = useRef<[number, number, number]>([0, 0, 0])
   const autoRotateTimerRef = useRef<d3.Timer | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const isDraggingRef = useRef(false)
+  const isZoomingRef = useRef(false)
 
   const countriesGeoJSON = useMemo(() => {
     if (!worldData) return null
@@ -39,7 +40,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
   }, [worldData])
 
   const radius = useMemo(() => {
-    return Math.min(dimensions.width, dimensions.height) / 2.2
+    return Math.min(dimensions.width, dimensions.height) / 2.5
   }, [dimensions])
 
   const updateGlobe = useCallback((
@@ -271,37 +272,43 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
     updateFlightPaths(svg, projection, countriesGeoJSON.features)
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([radius * 0.8, radius * 2])
+      .scaleExtent([radius * 0.8, radius * 2.5])
+      .on('start', () => {
+        isZoomingRef.current = true
+      })
       .on('zoom', (event) => {
         if (event.sourceEvent?.type === 'wheel') {
           scaleRef.current = event.transform.k
           projection.scale(event.transform.k)
           updateGlobe(svg, projection, path)
           updateLabels(svg, projection, path, countriesGeoJSON.features)
+          updateFlightPaths(svg, projection, countriesGeoJSON.features)
         }
+      })
+      .on('end', () => {
+        isZoomingRef.current = false
       })
 
     zoomBehaviorRef.current = zoom
-    svg.call(zoom)
+    svg.call(zoom).on('wheel.zoom', zoom.wheel)
 
     const drag = d3.drag<SVGSVGElement, unknown>()
       .on('start', () => {
         isDraggingRef.current = true
-        if (autoRotateTimerRef.current) {
-          autoRotateTimerRef.current.stop()
-        }
       })
       .on('drag', (event) => {
         const rotate = projection.rotate()
         const k = 75 / projection.scale()
-        const rotation: [number, number] = [
+        const rotation: [number, number, number] = [
           rotate[0] + event.dx * k,
-          Math.max(-90, Math.min(90, rotate[1] - event.dy * k))
+          Math.max(-90, Math.min(90, rotate[1] - event.dy * k)),
+          rotate[2]
         ]
         rotationRef.current = rotation
         projection.rotate(rotation)
         updateGlobe(svg, projection, path)
         updateLabels(svg, projection, path, countriesGeoJSON.features)
+        updateFlightPaths(svg, projection, countriesGeoJSON.features)
       })
       .on('end', () => {
         isDraggingRef.current = false
@@ -310,11 +317,13 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
     svg.call(drag)
 
     autoRotateTimerRef.current = d3.interval(() => {
-      if (!isDraggingRef.current) {
-        rotationRef.current[0] += 0.2
+      if (!isDraggingRef.current && !isZoomingRef.current) {
+        const currentRotation = rotationRef.current
+        rotationRef.current = [currentRotation[0] + 0.2, currentRotation[1], currentRotation[2]]
         projection.rotate(rotationRef.current)
         updateGlobe(svg, projection, path)
         updateLabels(svg, projection, path, countriesGeoJSON.features)
+        updateFlightPaths(svg, projection, countriesGeoJSON.features)
       }
     }, 50)
 
@@ -326,7 +335,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [countriesGeoJSON, dimensions, radius])
+  }, [countriesGeoJSON, dimensions, radius, updateGlobe, updateLabels, updateFlightPaths])
 
   useEffect(() => {
     if (!svgRef.current || !countriesGeoJSON || !projectionRef.current) return
@@ -370,8 +379,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
     },
     resetView: () => {
       if (svgRef.current && projectionRef.current && zoomBehaviorRef.current) {
-        rotationRef.current = [0, 0]
-        projectionRef.current.rotate([0, 0])
+        rotationRef.current = [0, 0, 0]
+        projectionRef.current.rotate([0, 0, 0])
         scaleRef.current = radius
         
         d3.select(svgRef.current)
