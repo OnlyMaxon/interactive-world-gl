@@ -146,10 +146,6 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({ selectedCountries, o
                 d3.select(this).attr('stroke-dasharray', '5,5')
               })
           }),
-        update => update.attr('d', pathGenerator as any),
-        exit => exit.transition().duration(300).attr('opacity', 0).remove()
-      )
-
     flightPathsGroup.selectAll<SVGCircleElement, any>('circle')
       .data(flightPaths, (d: any) => `${d.fromName}-${d.toName}`)
       .join(
